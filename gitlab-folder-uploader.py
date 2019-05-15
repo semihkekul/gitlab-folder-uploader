@@ -4,7 +4,7 @@ import json
 import os
 import pathlib
 import git
-
+import shutil
 
 private_token = sys.argv[1]
 
@@ -23,7 +23,7 @@ def get_id_from_json(json_input):
     return parsed_json['id']
 
 def my_walk(path_to_upload, parent_id):
-    
+    print(path_to_upload)
     upload_directory = os.path.abspath(path_to_upload)
     upload_files = os.listdir(upload_directory)
 
@@ -40,20 +40,44 @@ def my_walk(path_to_upload, parent_id):
                     id = get_id_from_json(add_group(filename, filename, parent_id))
                     my_walk(filepath, id)
             
-    
+
+
 def change_origin(folder_path, origin_url):
     origin_url_with_key = origin_url.replace("https://","https://oauth2:"+ private_token+"@")
     #origin_url_with_key += ".git"
+    try:
+        repo = git.Repo(folder_path)
 
-    repo = git.Repo(folder_path)
-    origin = repo.remotes.origin
+        origin = repo.remotes.origin
+        
+        with origin.config_writer as cw:
+            cw.set("pushurl", origin_url_with_key)
+            cw.set("url", origin_url_with_key)
+            cw.release()
 
-    with origin.config_writer as cw:
-        cw.set("pushurl", origin_url_with_key)
-        cw.set("url", origin_url_with_key)
-        cw.release()
+        origin.push('master')
+        
+    except git.exc.InvalidGitRepositoryError:
+        
+        previous_dir = os.getcwd()
 
-    origin.push()
+        os.chdir(folder_path)
+
+        shutil.rmtree(".git", ignore_errors=True)
+
+        repo = git.Repo.init(".")
+ 
+        repo.create_remote('origin', origin_url_with_key)
+        
+        repo.git.add(".","--all")
+        repo.git.commit('-m',"initial commit")
+
+        repo.remotes.origin.push('master')
+        
+        os.chdir(previous_dir)
+
+        
+
 
 
 
