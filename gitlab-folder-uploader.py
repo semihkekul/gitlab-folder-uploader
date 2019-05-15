@@ -3,6 +3,9 @@ import sys
 import json
 import os
 import pathlib
+import git
+
+
 private_token = sys.argv[1]
 
 headers = {
@@ -11,9 +14,9 @@ headers = {
 
 gitlab_url = sys.argv[2]
 
-
-
 gitlab_api_url = gitlab_url + "/api/v4"
+
+
 
 def get_id_from_json(json_input):
     parsed_json = json.loads(json_input)
@@ -30,7 +33,7 @@ def my_walk(path_to_upload, parent_id):
             if not filename.startswith("."):
                 if os.path.exists(os.path.join(filepath,".git")):
                     print("create project",filename)
-                    add_project(filename, parent_id)
+                    add_project(filepath, filename, parent_id)
                 else :
                     #web_path += "/" +filename
                     print("create group", filename)
@@ -38,8 +41,23 @@ def my_walk(path_to_upload, parent_id):
                     my_walk(filepath, id)
             
     
+def change_origin(folder_path, origin_url):
+    origin_url_with_key = origin_url.replace("https://","https://oauth2:"+ private_token+"@")
+    #origin_url_with_key += ".git"
 
-def add_project(project_name, namespace_id):
+    repo = git.Repo(folder_path)
+    origin = repo.remotes.origin
+
+    with origin.config_writer as cw:
+        cw.set("pushurl", origin_url_with_key)
+        cw.set("url", origin_url_with_key)
+        cw.release()
+
+    origin.push()
+
+
+
+def add_project(folder_path, project_name, namespace_id):
     global gitlab_api_url
     global private_token
     
@@ -50,11 +68,10 @@ def add_project(project_name, namespace_id):
     
     response = requests.post(url, data=payload, headers=headers, verify=False)
     print(response.status_code, response.reason)
-    
-    
-    return response.text
-
-
+    #print(response.text)
+        
+    parsed_json = json.loads(response.text)
+    change_origin(folder_path, parsed_json["http_url_to_repo"])
 
 
 def add_group(group_name, group_path, parent_id=None):
