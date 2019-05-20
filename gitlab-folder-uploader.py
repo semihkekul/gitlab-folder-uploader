@@ -32,11 +32,11 @@ def my_walk(path_to_upload, parent_id):
         if os.path.isdir(filepath):
             if not filename.startswith("."):
                 if os.path.exists(os.path.join(filepath,".git")):
-                    print("create project",filename)
+                    print("\ncreate project",filename)
                     add_project(filepath, filename, parent_id)
                 else :
                     #web_path += "/" +filename
-                    print("create group", filename)
+                    print("\ncreate group", filename)
                     id = get_id_from_json(add_group(filename, filename, parent_id))
                     my_walk(filepath, id)
             
@@ -48,14 +48,21 @@ def change_origin(folder_path, origin_url):
     try:
         repo = git.Repo(folder_path)
 
+        try:
+            origin = repo.remotes.origin
+        except AttributeError:
+            repo.create_remote('origin', origin_url_with_key)
+
         origin = repo.remotes.origin
-        
         with origin.config_writer as cw:
             cw.set("pushurl", origin_url_with_key)
             cw.set("url", origin_url_with_key)
             cw.release()
+        try:
+            origin.push('master')
+        except git.exc.GitCommandError as err:
+            print(err)
 
-        origin.push('master')
         
     except git.exc.InvalidGitRepositoryError:
         
@@ -70,9 +77,13 @@ def change_origin(folder_path, origin_url):
         repo.create_remote('origin', origin_url_with_key)
         
         repo.git.add(".","--all")
-        repo.git.commit('-m',"initial commit")
+        try:
+            repo.git.commit('-m',"initial commit")
+            repo.remotes.origin.push('master')
+        except git.exc.GitCommandError as err:
+            print(err)
 
-        repo.remotes.origin.push('master')
+        
         
         os.chdir(previous_dir)
 
@@ -91,7 +102,7 @@ def add_project(folder_path, project_name, namespace_id):
     url = gitlab_api_url + "/projects"
     
     response = requests.post(url, data=payload, headers=headers, verify=False)
-    print(response.status_code, response.reason)
+    print(response.status_code, response.reason,"\n")
     #print(response.text)
         
     parsed_json = json.loads(response.text)
@@ -112,7 +123,7 @@ def add_group(group_name, group_path, parent_id=None):
     
     response = requests.post(url, data=payload, headers=headers, verify=False)
     
-    
+    print(response.status_code, response.reason,"\n")
     
     return response.text
     
