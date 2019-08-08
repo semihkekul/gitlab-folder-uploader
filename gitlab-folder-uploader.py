@@ -106,7 +106,7 @@ def add_project(folder_path, project_name, namespace_id):
     #print(response.text)
         
     parsed_json = json.loads(response.text)
-    change_origin(folder_path, parsed_json["http_url_to_repo"])
+    change_origin(folder_path, parsed_json["http_url_to_repo"] + "/")
 
 
 def add_group(group_name, group_path, parent_id=None):
